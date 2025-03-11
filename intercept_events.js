@@ -1,10 +1,4 @@
-let previousInteractionNotesValue = null;
-let checkChanges = setInterval(() => {
-    if (previousInteractionNotesValue !== document.getElementById('interaction-notes').value) {
-        previousInteractionNotesValue = document.getElementById('interaction-notes').value;
-        alert('change detected!');
-    }
-}, 250);
+
 
 // Use the function above to detect changes in the interaction notes.
 // Store all the information for the ticket in a json which can be stringified and put in the interaction-notes.

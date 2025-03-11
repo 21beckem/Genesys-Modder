@@ -14,9 +14,11 @@ with open('script.js', 'r') as f:
     js = f.read().replace('\\', '\\\\').replace('`', '\\`')
 html = html.replace('<script src="script.js"></script>', '<script>\n' + js + '\n</script>')
 
-# gather button file
+# gather button files
 with open('button.html', 'r') as f:
     button = f.read().replace('\\', '\\\\')
+with open('sidebarBtn.html', 'r') as f:
+    sideBarBtn = f.read().replace('\\', '\\\\')
 
 # gather injector files
 with open('injector.js', 'r') as f:
@@ -25,6 +27,7 @@ with open('injector.js', 'r') as f:
 # compile all into injector.js
 injector = injector.replace('$$button.html$$', button)
 injector = injector.replace('$$index.html$$', html)
+injector = injector.replace('$$sidebarBtn.html$$', sideBarBtn)
 
 
 with open('app.js', 'w') as f:
