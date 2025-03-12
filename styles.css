@@ -2,7 +2,10 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Roboto, sans-serif;
+}
+html *, body * {
+    font-family: Roboto, sans-serif;
 }
 :root {
     --accordion-transition: none;
@@ -10,6 +13,7 @@ html, body {
     --gen-dark-gray: #33383D;
     --gen-light-gray: #98A7B8;
     --gen-blue: #2A60C8;
+    --gen-green: #77DD22;
 }
 /* HTML: <div class="loader"></div> */
 .loader {
@@ -56,6 +60,12 @@ html, body {
     transition: 0.4s;
     height: 55px;
 }
+.accordion:not(.active) span {
+    display: unset;
+}
+.accordion.active span {
+    display: none;
+}
 
 .accordion.active, .accordion:hover {
     color: white;
@@ -82,22 +92,39 @@ html, body {
     transition: var(--accordion-transition);
 }
 
-input[type="text"] {
+label:not(.either_or) {
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+input[type="text"], textarea {
+    width: calc(100% - 20px);
+    resize: none;
     padding: 10px;
     border-radius: 10px;
     border: 1px solid rgb(36, 36, 36);
     box-shadow: 0px 0px 20px -10px #bfbfbf inset;
     color: black;
 }
+input[type="text"]:disabled, textarea:disabled {
+    border-color: var(--gen-light-gray);
+    color: var(--gen-light-gray);
+}
 
-#IdenifySearchButton {
+.submitBtn {
     padding: 10px 30px;
     background-color: white;
     color: var(--gen-orange);
     border: 1px solid var(--gen-orange);
     cursor: pointer;
 }
-#IdenifySearchButton:disabled {
+.submitBtn:focus {
+    outline: none;
+    border-color: var(--gen-orange);
+    color: white;
+    background-color: var(--gen-orange);
+}
+.submitBtn:disabled {
     border-color: var(--gen-light-gray);
     color: var(--gen-light-gray);
     cursor: not-allowed;
@@ -124,4 +151,33 @@ input[type="text"] {
     border: 1px solid var(--gen-orange);
     border-radius: 0 5px 5px 0;
     cursor: pointer;
+}
+#peopleReultsList .personCard.selected {
+    box-shadow: 0px 0px 0px 3px var(--gen-green);
+}
+
+/* Custom Radio Buttons */
+input[type="radio"] { display: none }
+div.either_or {
+    display: flex;
+    align-items: stretch;
+    flex-direction: row;
+}
+label.either_or {
+    position: relative;
+    color: var(--gen-orange);
+    cursor: pointer;
+    text-align: center;
+    gap: 0.8em;
+    border: 1px solid var(--gen-orange);
+    padding: 8px;
+    flex: 1;
+    align-content: center;
+    font-size: 15px;
+}
+label.either_or.one { border-radius: 5px 0 0 5px }
+label.either_or.two { border-radius: 0 5px 5px 0 }
+input[type="radio"]:checked+label.either_or {
+    background-color: var(--gen-orange);
+    color: white;
 }

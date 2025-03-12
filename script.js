@@ -1,4 +1,5 @@
-let AccordianSections = Array.from(document.getElementsByClassName("accordion"));
+HTMLCollection.prototype.forEach = Array.from(this).forEach;
+let AccordianSections = document.getElementsByClassName("accordion");
 const _ = (el) => document.getElementById(el);
 AccordianSections.forEach((el) => {
     if (el.classList.contains("active")) {
@@ -14,27 +15,43 @@ AccordianSections.forEach((el) => {
         }
     };
     el.setActive = () => {
-        AccordianSections.forEach((e) => e.open(false));
-        el.open(true);
+        // first check if they can open this section yet
+        if (canIopenThisAccordionSection(el.id)) {
+            AccordianSections.forEach((e) => e.open(false));
+            el.open(true);
+        }
     }
     el.addEventListener("click", el.setActive );
 });
+function canIopenThisAccordionSection(elId) {
+    if (elId == 'IdentifyAccordionBtn') return true; // always allow Identify tab to open
+    if (elId == 'AssistAccordionBtn') {
+        if (SelectedPersonId == '') return false; // can't open Assist tab if no person is selected
+        return true;
+    }
+    if (elId == 'ReviewAccordionBtn') {
+        if (SelectedPersonId == '' || !AI_TicketHasBeenGenerated) return false; // can't open Review tab if no person is selected and if no KB article is selected
+        return true;
+    }
+    return false;
+}
 // set transition AFTER opening the first section
 document.documentElement.style.setProperty('--accordion-transition', 'height 0.5s ease');
 // on doument resize, re-set height property
-window.addEventListener('resize', () => {
-    document.querySelector('.accordion.active + .accordion-panel').style.height = (document.body.scrollHeight - 165) + "px";
-});
+const resizeToWindowHeight = () => {
+    document.querySelector('.accordion.active + .accordion-panel').style.height = (document.body.scrollHeight - 170) + "px";
+}
+document.addEventListener("click", (e) => resizeToWindowHeight);
+window.addEventListener('resize', resizeToWindowHeight);
 // register input onenter
 Array.from(document.querySelectorAll('*[onenter]')).forEach((el) => {
     el.addEventListener("keyup", (e) => {
-        console.log(e.keyCode);
-        
+        // console.log(e.keyCode);
         if (e.keyCode === 13) {
             _(el.getAttribute('onenter')).click();
         }
     });
-})
+});
 
 function detectSearchQueryType(inVal, outputSpan) {
     inVal = inVal.trim().toLowerCase();
@@ -66,36 +83,38 @@ function showLoader(yesOrNo) {
     _('loadingOverlay').style.display = yesOrNo ? null : 'none';
 }
 
+let PersonSearchResults = [];
+let SelectedPersonId = '';
+let AI_TicketHasBeenGenerated = false;
 async function conductIdenitySearch(el) {
     let q = el.value;
     let t = el.getAttribute('Q-type');
     if (q.trim() == '' || t == 'X') return;
 
+    // reset the selection process
+    SelectedPersonId = '';
+    PersonSearchResults = [];
+    AI_TicketHasBeenGenerated = false;
+
     showLoader(true);
 
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, (Math.random() * 1000) + 1000));
     
     showLoader(false);
 
-    exampleResults = [
+    PersonSearchResults = [
         ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
         ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM']
+        ['f65f2ca2-efe9-ea11-9112-005056ac5ec6', 'Daniel Mann', 'man21018@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 8/29/20 4:03 AM']
     ];
 
     // display Results
     const peopleReultsList = _('peopleReultsList');
     peopleReultsList.innerHTML = '';
-    exampleResults.forEach((result) => {
+    PersonSearchResults.forEach((result) => {
         let personCard = document.createElement('div');
         personCard.className = 'personCard';
+        personCard.setAttribute('id', result[0]);
         personCard.innerHTML = `
             <h3 onclick="openPersonDetails('`+result[0]+`')">`+result[1]+`</h3>
             <p>`+result[2]+`</p>
@@ -115,5 +134,23 @@ async function openPersonDetails(U_identifier) {
 }
 
 function selectPersonAndStartTicket(U_identifier) {
+    // highlight that person's card
+    SelectedPersonId = U_identifier;
+    _('peopleReultsList').children.forEach(personCard => personCard.classList.remove('selected'));
+    document.querySelector('#peopleReultsList div.personCard[id="'+SelectedPersonId+'"]').classList.add('selected');
+    
+    let personArray = PersonSearchResults.filter((per) => per[0] === SelectedPersonId)[0];
+    _('RequesterName_toSubmit').value = personArray[1];
+    document.querySelector('#IdentifyAccordionBtn span').innerHTML = ': ' + personArray[1];
     _('AssistAccordionBtn').setActive();
+}
+
+
+async function generateTicketWithAI() {
+    showLoader(true);
+    await new Promise(r => setTimeout(r, (Math.random() * 1000) + 1000));
+    AI_TicketHasBeenGenerated = true;
+    showLoader(false);
+
+    _('ReviewAccordionBtn').setActive();
 }

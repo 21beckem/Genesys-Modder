@@ -9,14 +9,14 @@
 </head>
 
 <body>
-    <button id="IdentifyAccordionBtn" class="accordion active">Identify</button>
+    <button id="IdentifyAccordionBtn" class="accordion active">Identify<span></span></button>
     <div class="accordion-panel">
         <center>
             <h2>TD Ticket</h2>
             <input type="text" id="IdenifySearchQuery" oninput="detectSearchQueryType(this.value, this.nextElementSibling.firstElementChild)" onenter="IdenifySearchButton" placeholder="Search Query..." style="width: 80%; max-width: 230px;">
             <p style="color: gray;">Searching as <span>...</span></p>
             <br>
-            <button disabled id="IdenifySearchButton" onclick="conductIdenitySearch(_('IdenifySearchQuery'))">Search</button>
+            <button class="submitBtn" disabled id="IdenifySearchButton" onclick="conductIdenitySearch(_('IdenifySearchQuery'))">Search</button>
         </center>
         <br>
         <div id="peopleReultsList"></div>
@@ -25,12 +25,51 @@
 
     <button id="AssistAccordionBtn" class="accordion">Assist</button>
     <div class="accordion-panel">
-        <p>This is where we would have all the inpout fields where people can take their notes and select their KB.</p>
+        <label for="KBSearchQuery">Knowledge Base Article</label>
+        <input type="text" id="KBSearchQuery" name="KBSearchQuery" placeholder="Start typing..." style="width: calc(100% - 20px);"><br>
+
+        <label for="agentNotesTextarea">Agent Notes</label>
+        <textarea name="agentNotesTextarea" id="agentNotesTextarea" style="height: 300px;" placeholder="Enter detailed notes about the ticket. Include all relevant information, such as user-reported issues, troubleshooting steps taken, error messages, and any supplementary details that could assist in resolving the issue efficiently.  🚨 Important: DO NOT include personally identifiable information (PII) such as names, phone numbers, email addresses, dates of birth (DOB), Social Security numbers (SSNs), or any sensitive data (e.g., grades, honor code issues, etc.)."></textarea>
+        <br><br>
+        <center>
+            <button class="submitBtn" onclick="generateTicketWithAI()">Gernerate Ticket with AI</button>
+        </center>
     </div>
 
     <button id="ReviewAccordionBtn" class="accordion">Review</button>
     <div class="accordion-panel">
-        <p>This is where the analyst can review the ticket before submitting.</p>
+        <label for="RequesterName_toSubmit">Requester</label>
+        <input type="text" id="RequesterName_toSubmit" name="RequesterName_toSubmit" disabled style="width: calc(100% - 20px);">
+
+        <label for="Type_toSubmit">Type</label>
+        <div class="either_or">
+            <input type="radio" name="Type_toSubmit" id="Incident" />
+            <label class="either_or one" for="Incident">Incident</label>
+            <input type="radio" name="Type_toSubmit" id="Service_Request" checked="checked" />
+            <label class="either_or two" for="Service_Request">Service Request</label>
+        </div>
+
+        <label for="Responsible_toSubmit">Responsible</label>
+        <input type="text" id="Responsible_toSubmit" name="Responsible_toSubmit" style="width: calc(100% - 20px);">
+
+        <label for="Status_toSubmit">Status</label>
+        <div class="either_or">
+            <input type="radio" name="Status_toSubmit" id="New" />
+            <label class="either_or one" for="New">New</label>
+            <input type="radio" name="Status_toSubmit" id="Resolved" checked="checked" />
+            <label class="either_or two" for="Resolved">Resolved</label>
+        </div>
+
+        <label for="KB_toSubmit">Knowledge Base Article</label>
+        <input type="text" id="KB_toSubmit" name="KB_toSubmit" style="width: calc(100% - 20px);">
+        
+        <label for="DescriptionTextarea_ToSubmit">Description</label>
+        <textarea name="DescriptionTextarea_ToSubmit" id="DescriptionTextarea_ToSubmit" style="height: 300px;"></textarea>
+        <br><br>
+        <center>
+            <button class="submitBtn" onclick="alert('Ticket submitting...')">Submit Ticket</button>
+        </center>
+        <br><br>
     </div>
 
     <div id="loadingOverlay" style="display: none;">

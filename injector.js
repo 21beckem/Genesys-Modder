@@ -8,6 +8,11 @@ if (!TicketBody) {
     alert("There was an error finding the panel to overwrite. Please try again.");
 }
 
+// confirm before page refresh because you'll lose ticket progress.
+window.onbeforeunload = function(event) {
+    return "Are you sure you want to refresh the page?";
+};
+
 const sidebar = document.querySelector('UL.navigation-action-bar');
 let newLiBtn = document.createElement('LI');
 newLiBtn.classList.add('action-item');
