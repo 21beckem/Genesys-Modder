@@ -30,7 +30,7 @@ injector = injector.replace('$$index.html$$', html)
 injector = injector.replace('$$sidebarBtn.html$$', sideBarBtn)
 
 
-with open('app.js', 'w') as f:
+with open('extension/injected/genesys.js', 'w') as f:
     f.write(injector)
 
 print("\nDone\n")

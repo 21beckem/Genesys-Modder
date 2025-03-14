@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<iframe src="https://us1.teamdynamix.com/tdapp/app/form/start?c=ODFmNmM0NTAtODZjYi00N2VmLWExYTAtOTc1MWY5NTg0NjYz&t=SGlyN2dBPT1PQjVJMkNyeFB0YUlSRnRhWlpGYXY3TERVWmhLRVZiTDAxSnBkbU9TLzY0dTQ5Tk9mRjNYZDU3YmlGZUZPOUQrVG1rWmxDUnlmdmZMeFUrNnVGeXJya3ZtSkRxSU9JaDF4VFI4UkpTdGV2SEdKRE5EWGRDQ1hvbWo1QzY0QVdISg&i=bec8d89b-1372-4df9-bc90-997acfaf67ab" height="700" width="100%" id="myFrame"></iframe>
+
+<button onclick="btnPush()">Send Command</button>
+
+<script>
+async function btnPush() {
+	const myFrame = document.querySelector('iframe');
+    await sendMessageToIframe(myFrame, 'setInput', 'Enter Requestor I-Number', '099346149');
+    await sendMessageToIframe(myFrame, 'click', 'Search');
+    console.log('Searching for requestor with I-Number: 099346149.');
+    await sendMessageToIframe(myFrame, 'waitForLoad', '');
+    console.log('Finished waiting for the page to finish loading.');
+}
+
+function sendMessageToIframe(iframe, action, inputPlaceholder, valueToSet=null) {
+    return new Promise((resolve, reject) => {
+        const requestId = Math.random().toString(36).substr(2, 9);
+
+        let handleMessage = (event) => {
+            if (!event.data || event.data.requestId !== requestId) return;
+
+            window.removeEventListener("message", handleMessage);
+            event.data.success ? resolve(event.data.data) : reject(event.data.error);
+        }
+
+        window.addEventListener("message", handleMessage);
+        if (valueToSet != null) valueToSet = String(valueToSet);
+        iframe.contentWindow.postMessage({ action, inputPlaceholder, requestId, valueToSet }, "*");
+    });
+}
+</script>
+
+</body>
+</html>
+

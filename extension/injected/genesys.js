@@ -1,3 +1,12 @@
+(async function() {
+
+// wait for page to load
+while ( !document.querySelector('DIV.interaction-controls  DIV[role=tablist] BUTTON[aria-label=Notes]') || !document.querySelector('DIV.notes-body:has( textarea#interaction-notes)') ) {
+    await new Promise(r => requestAnimationFrame(r));
+}
+// wait a little longer just to be sure.
+await new Promise(r => setTimeout(r, 1000));
+
 const TicketBtn = document.querySelector('DIV.interaction-controls  DIV[role=tablist] BUTTON[aria-label=Notes]')
 const TicketBody = document.querySelector('DIV.notes-body:has( textarea#interaction-notes)')
 
@@ -533,3 +542,5 @@ async function generateTicketWithAI() {
     panels.array.forEach(el => el.style.display = 'none');
     document.getElementById('TicketFrame_' + parsedJSON.uid).style.display = 'block';
 }
+
+})();

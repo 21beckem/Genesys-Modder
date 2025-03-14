@@ -38,37 +38,5 @@
         window.parent.postMessage(response, "*");
     });
 
-    console.log('Iframe messaging script injected and running.');
+    console.log('TD-Form script injected and running.');
 })();
-
-// Inject above code into iframe with TD
-//////////////////////////////////////////////////////////////////////////////////////
-// <iframe src="link-to-TD-ticket" height="400" width="400" id="myFrame"></iframe>
-
-
-// example use running from parent window
-const myFrame = document.querySelector('iframe');
-await sendMessageToIframe(myFrame, 'setInput', 'Enter Requestor I-Number', '099346149');
-await sendMessageToIframe(myFrame, 'click', 'Search');
-console.log('Searching for requestor with I-Number: 099346149.');
-await sendMessageToIframe(myFrame, 'waitForLoad', '');
-console.log('Finished waiting for the page to finish loading.');
-
-//////////////////////////////////////////////////////////////////////////////////////
-// include below code in parent window to use with example code above
-function sendMessageToIframe(iframe, action, inputPlaceholder, valueToSet=null) {
-    return new Promise((resolve, reject) => {
-        const requestId = Math.random().toString(36).substr(2, 9);
-
-        let handleMessage = (event) => {
-            if (!event.data || event.data.requestId !== requestId) return;
-
-            window.removeEventListener("message", handleMessage);
-            event.data.success ? resolve(event.data.data) : reject(event.data.error);
-        }
-
-        window.addEventListener("message", handleMessage);
-        if (valueToSet != null) valueToSet = String(valueToSet);
-        iframe.contentWindow.postMessage({ action, inputPlaceholder, requestId, valueToSet }, "*");
-    });
-}
