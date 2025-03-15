@@ -113,6 +113,7 @@ input[type="text"]:disabled, textarea:disabled {
 
 .submitBtn {
     padding: 10px 30px;
+    margin-bottom: 20px;
     background-color: white;
     color: var(--gen-orange);
     border: 1px solid var(--gen-orange);

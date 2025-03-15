@@ -1,3 +1,7 @@
+HTMLCollection.prototype.forEach = Array.from(this).forEach;
+let TdTicketFrames = [];
+let knownInteractions = [];
+let selectedInteraction = '';
 (async function() {
 
 // wait for page to load
@@ -22,6 +26,7 @@ window.onbeforeunload = function(event) {
     return "Are you sure you want to refresh the page?";
 };
 
+// add sidebar and ticket button
 const sidebar = document.querySelector('UL.navigation-action-bar');
 let newLiBtn = document.createElement('LI');
 newLiBtn.classList.add('action-item');
@@ -44,503 +49,100 @@ newLiBtn.innerHTML = `<a href="javascript:alert('Ticket')">
     <gux-tooltip placement="right" id="gux-tooltip-uoz2uq1885" class="" role="tooltip" hydrated="" data-placement="right" style="left: 71px; top: 595.5px; visibility: visible;">Tickets</gux-tooltip>
 </a>`;
 sidebar.insertBefore(newLiBtn, sidebar.querySelector('LI.spacer'));
-
-TicketBody.style.overflow = 'hidden';
 TicketBtn.innerHTML = `<div style="width: 60%; height: 60%; overflow: visible;" title="" class="app-img icon ember-view">
     <svg transform="rotate(-45)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M64 64C28.7 64 0 92.7 0 128l0 64c0 8.8 7.4 15.7 15.7 18.6C34.5 217.1 48 235 48 256s-13.5 38.9-32.3 45.4C7.4 304.3 0 311.2 0 320l0 64c0 35.3 28.7 64 64 64l448 0c35.3 0 64-28.7 64-64l0-64c0-8.8-7.4-15.7-15.7-18.6C541.5 294.9 528 277 528 256s13.5-38.9 32.3-45.4c8.3-2.9 15.7-9.8 15.7-18.6l0-64c0-35.3-28.7-64-64-64L64 64zm64 112l0 160c0 8.8 7.2 16 16 16l288 0c8.8 0 16-7.2 16-16l0-160c0-8.8-7.2-16-16-16l-288 0c-8.8 0-16 7.2-16 16zM96 160c0-17.7 14.3-32 32-32l320 0c17.7 0 32 14.3 32 32l0 192c0 17.7-14.3 32-32 32l-320 0c-17.7 0-32-14.3-32-32l0-192z"/></svg>
 </div>
 <gux-tooltip placement="bottom" id="gux-tooltip-k38ybk46n8" class="" role="tooltip" hydrated="" data-placement="bottom" style="left: 800.875px; top: 117px; visibility: visible;">
     <span aria-hidden="true">Ticket</span>
 </gux-tooltip>`;
-TicketBody.innerHTML = `
-    <div id="NewTicketPanelBodySwitcher" style="width: 100%; height: 100%; border: none"></div>
-    <textarea style="display: none; opacity: 0; pointer-events: none" id="interaction-notes" dir="auto" placeholder="Type your notes here (no personal data)..." aria-label="Notes"></textarea>
-`;
 
-const NewTicketPanelBodySwitcher = document.getElementById('NewTicketPanelBodySwitcher');
-
+// add ticket panel parent DIV
+TicketBody.style.overflow = 'hidden';
 const InteractionNoteTextarea = document.getElementById('interaction-notes');
-let previousInteractionNotesValue = null;
-let letChangesBeTracked = true;
-let checkChanges = setInterval(() => {
-    if (previousInteractionNotesValue !== InteractionNoteTextarea.value) {
-        previousInteractionNotesValue = InteractionNoteTextarea.value;
-        
-        chatUpdate(previousInteractionNotesValue);
+const NewTicketPanelBodySwitcher = document.createElement('DIV');
+NewTicketPanelBodySwitcher.id = 'NewTicketPanelBodySwitcher';
+NewTicketPanelBodySwitcher.style.cssText = 'width: 100%; height: 100%; border: none';
+TicketBody.children.forEach((child) => {
+    if (child != InteractionNoteTextarea) {
+        child.remove();
     }
-}, 250);
-function updateInteractionNotes(newVal) {
-    console.log('setting interaction notes to: ' + newVal);
-    letChangesBeTracked = false;
-    previousInteractionNotesValue = newVal;
-    InteractionNoteTextarea.value = newVal;
-    letChangesBeTracked = true;
+})
+TicketBody.insertBefore(NewTicketPanelBodySwitcher, InteractionNoteTextarea);
+
+/////////////////////////////////////////////////////////
+//        Start Detecting Interaction Changes          //
+/////////////////////////////////////////////////////////
+
+// wait for interactions to load
+while ( !document.querySelectorAll('.interactions.chat-container .interactions') ) {
+    await new Promise(r => requestAnimationFrame(r));
 }
-panels = [];
-function isJsonString(str) {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
+// wait a little longer just to be sure.
+await new Promise(r => setTimeout(r, 2000));
+
+const interactionsList = document.querySelector('.interactions.chat-container .interactions');
+interactionsList.countInteractions = () => {
+    count = 0;
+    interactionsList.children.forEach((child) => {
+        count += (interactionsList.children[0].className.includes('no-interactions')) ? 0 : 1;
+    });
+    return count;
+}
+
+if (interactionsList.countInteractions() > 0) {
+    // create ticket panels for those now
+    compareInteractionListToTickets();
+}
+
+// make an observer to detect new interactions
+let previousAmountOfInteractions = interactionsList.countInteractions();
+const InteractionsObserver = new MutationObserver((mutationsList, observer) => {
+    let newInteractions = interactionsList.countInteractions();
+    if (newInteractions != previousAmountOfInteractions) {
+        // A child node has been added or removed.
+        previousAmountOfInteractions = newInteractions;
+        setTimeout(compareInteractionListToTickets, 200);
+    } else {
+        // if not, still compare selected interaction
+        compareSelectedInteraction();
     }
-    return true;
-}
-function chatUpdate(textareaVal) {
-    if (!isJsonString(textareaVal)) { // this is a new conversation that hasn't been used yet
-        // create new JSON with a unique ID for this conversation
-        newUid = Math.random().toString(36).substring(2, length + 2);
-        let newJSON = {
-            uid: newUid,
-            IdentifyTab: {
-                selected_id: '',
-                searchQuery: '',
-                results: []
-            }
+
+});
+InteractionsObserver.observe(interactionsList, { attributes: false, childList: true, subtree: false, characterData: false });
+
+function compareSelectedInteraction() {
+    interactionsList.children.forEach((child) => {
+        if (child.className.includes('selected') && child.id != selectedInteraction) {
+            alert('New Selected Interaction: ' + child.id);
+            selectedInteraction = child.id;
         }
-        // create new window
-        NewTicketPanelBodySwitcher.innerHTML += '<iframe id="TicketFrame_'+newUid+'" style="width: 100%; height: 100%; border: none"></iframe>';
-        let thisNewIframe = document.getElementById('TicketFrame_'+newUid);
-        thisNewIframe.srcdoc = `<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Genesys Ticketer Panel</title>
-    <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: Roboto, sans-serif;
-}
-html *, body * {
-    font-family: Roboto, sans-serif;
-}
-:root {
-    --accordion-transition: none;
-    --gen-orange: #FF451A;
-    --gen-dark-gray: #33383D;
-    --gen-light-gray: #98A7B8;
-    --gen-blue: #2A60C8;
-    --gen-green: #77DD22;
-}
-/* HTML: <div class="loader"></div> */
-.loader {
-    --c: no-repeat linear-gradient(var(--gen-orange) 0 0);
-    background: 
-        var(--c),var(--c),var(--c),
-        var(--c),var(--c),var(--c),
-        var(--c),var(--c),var(--c);
-    background-size: 16px 16px;
-    animation: 
-        l32-1 1s infinite,
-        l32-2 1s infinite;
-}
-@keyframes l32-1 {
-    0%,100% {width:45px;height: 45px}
-    35%,65% {width:65px;height: 65px}
-}
-  @keyframes l32-2 {
-    0%,40%  {background-position: 0 0,0 50%, 0 100%,50% 100%,100% 100%,100% 50%,100% 0,50% 0,  50% 50% }
-    60%,100%{background-position: 0 50%, 0 100%,50% 100%,100% 100%,100% 50%,100% 0,50% 0,0 0,  50% 50% }
-}
-#loadingOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-.accordion {
-    background-color: var(--gen-dark-gray);
-    color: var(--gen-light-gray);
-    cursor: pointer;
-    padding: 18px;
-    width: 100%;
-    border: none;
-    text-align: left;
-    outline: none;
-    font-size: 15px;
-    transition: 0.4s;
-    height: 55px;
-}
-.accordion:not(.active) span {
-    display: unset;
-}
-.accordion.active span {
-    display: none;
+    });
 }
 
-.accordion.active, .accordion:hover {
-    color: white;
-}
+function compareInteractionListToTickets() {
+    let tempKnownInteractions = [...knownInteractions];
+    let newKnownInteractions = [];
+    interactionsList.children.forEach((child) => {
+        if (child.className.includes('no-interactions')) return;
+        newKnownInteractions.push(child.id);
 
-.accordion:after {
-    content: '\\002B';
-    color: #777;
-    font-weight: bold;
-    float: right;
-    margin-left: 5px;
-}
-
-.active:after {
-    content: "\\2212";
-}
-
-.accordion-panel {
-    padding: 0 18px;
-    background-color: white;
-    height: 0;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    transition: var(--accordion-transition);
-}
-
-label:not(.either_or) {
-    display: block;
-    margin-top: 20px;
-    margin-bottom: 5px;
-}
-input[type="text"], textarea {
-    width: calc(100% - 20px);
-    resize: none;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid rgb(36, 36, 36);
-    box-shadow: 0px 0px 20px -10px #bfbfbf inset;
-    color: black;
-}
-input[type="text"]:disabled, textarea:disabled {
-    border-color: var(--gen-light-gray);
-    color: var(--gen-light-gray);
-}
-
-.submitBtn {
-    padding: 10px 30px;
-    background-color: white;
-    color: var(--gen-orange);
-    border: 1px solid var(--gen-orange);
-    cursor: pointer;
-}
-.submitBtn:focus {
-    outline: none;
-    border-color: var(--gen-orange);
-    color: white;
-    background-color: var(--gen-orange);
-}
-.submitBtn:disabled {
-    border-color: var(--gen-light-gray);
-    color: var(--gen-light-gray);
-    cursor: not-allowed;
-}
-
-#peopleReultsList .personCard {
-    position: relative;
-    padding: 5px 10px;
-    border-radius: 10px;
-    border: 1px solid rgb(36, 36, 36);
-    box-shadow: 0px 0px 20px -10px #bfbfbf inset;
-    color: black;
-    margin-top: 10px;
-}
-#peopleReultsList .personCard h3 { margin: 0; color: #306090; cursor: pointer; }
-#peopleReultsList .personCard p { margin: 0; padding-left: 10px; }
-#peopleReultsList .personCard button {
-    position: absolute;
-    height: calc(100% - 10px);
-    right: 5px;
-    top: 5px;
-    padding: 3px 15px;
-    color: var(--gen-orange);
-    border: 1px solid var(--gen-orange);
-    border-radius: 0 5px 5px 0;
-    cursor: pointer;
-}
-#peopleReultsList .personCard.selected {
-    box-shadow: 0px 0px 0px 3px var(--gen-green);
-}
-
-/* Custom Radio Buttons */
-input[type="radio"] { display: none }
-div.either_or {
-    display: flex;
-    align-items: stretch;
-    flex-direction: row;
-}
-label.either_or {
-    position: relative;
-    color: var(--gen-orange);
-    cursor: pointer;
-    text-align: center;
-    gap: 0.8em;
-    border: 1px solid var(--gen-orange);
-    padding: 8px;
-    flex: 1;
-    align-content: center;
-    font-size: 15px;
-}
-label.either_or.one { border-radius: 5px 0 0 5px }
-label.either_or.two { border-radius: 0 5px 5px 0 }
-input[type="radio"]:checked+label.either_or {
-    background-color: var(--gen-orange);
-    color: white;
-}
-</style>
-</head>
-
-<body>
-    <button id="IdentifyAccordionBtn" class="accordion active">Identify<span></span></button>
-    <div class="accordion-panel">
-        <center>
-            <h2>TD Ticket</h2>
-            <input type="text" id="IdenifySearchQuery" oninput="detectSearchQueryType(this.value, this.nextElementSibling.firstElementChild)" onenter="IdenifySearchButton" placeholder="Search Query..." style="width: 80%; max-width: 230px;">
-            <p style="color: gray;">Searching as <span>...</span></p>
-            <br>
-            <button class="submitBtn" disabled id="IdenifySearchButton" onclick="conductIdenitySearch(_('IdenifySearchQuery'))">Search</button>
-        </center>
-        <br>
-        <div id="peopleReultsList"></div>
-        
-    </div>
-
-    <button id="AssistAccordionBtn" class="accordion">Assist</button>
-    <div class="accordion-panel">
-        <label for="KBSearchQuery">Knowledge Base Article</label>
-        <input type="text" id="KBSearchQuery" name="KBSearchQuery" placeholder="Start typing..." style="width: calc(100% - 20px);"><br>
-
-        <label for="agentNotesTextarea">Agent Notes</label>
-        <textarea name="agentNotesTextarea" id="agentNotesTextarea" style="height: 300px;" placeholder="Enter detailed notes about the ticket. Include all relevant information, such as user-reported issues, troubleshooting steps taken, error messages, and any supplementary details that could assist in resolving the issue efficiently.  🚨 Important: DO NOT include personally identifiable information (PII) such as names, phone numbers, email addresses, dates of birth (DOB), Social Security numbers (SSNs), or any sensitive data (e.g., grades, honor code issues, etc.)."></textarea>
-        <br><br>
-        <center>
-            <button class="submitBtn" onclick="generateTicketWithAI()">Gernerate Ticket with AI</button>
-        </center>
-    </div>
-
-    <button id="ReviewAccordionBtn" class="accordion">Review</button>
-    <div class="accordion-panel">
-        <label for="RequesterName_toSubmit">Requester</label>
-        <input type="text" id="RequesterName_toSubmit" name="RequesterName_toSubmit" disabled style="width: calc(100% - 20px);">
-
-        <label for="Type_toSubmit">Type</label>
-        <div class="either_or">
-            <input type="radio" name="Type_toSubmit" id="Incident" />
-            <label class="either_or one" for="Incident">Incident</label>
-            <input type="radio" name="Type_toSubmit" id="Service_Request" checked="checked" />
-            <label class="either_or two" for="Service_Request">Service Request</label>
-        </div>
-
-        <label for="Responsible_toSubmit">Responsible</label>
-        <input type="text" id="Responsible_toSubmit" name="Responsible_toSubmit" style="width: calc(100% - 20px);">
-
-        <label for="Status_toSubmit">Status</label>
-        <div class="either_or">
-            <input type="radio" name="Status_toSubmit" id="New" />
-            <label class="either_or one" for="New">New</label>
-            <input type="radio" name="Status_toSubmit" id="Resolved" checked="checked" />
-            <label class="either_or two" for="Resolved">Resolved</label>
-        </div>
-
-        <label for="KB_toSubmit">Knowledge Base Article</label>
-        <input type="text" id="KB_toSubmit" name="KB_toSubmit" style="width: calc(100% - 20px);">
-        
-        <label for="DescriptionTextarea_ToSubmit">Description</label>
-        <textarea name="DescriptionTextarea_ToSubmit" id="DescriptionTextarea_ToSubmit" style="height: 300px;"></textarea>
-        <br><br>
-        <center>
-            <button class="submitBtn" onclick="alert('Ticket submitting...')">Submit Ticket</button>
-        </center>
-        <br><br>
-    </div>
-
-    <div id="loadingOverlay" style="display: none;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-            <div class="loader"></div>
-        </div>
-        <div id="loadingOverlay_closePopupBtn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-            <button style="transform: translateY(80px); padding: 10px; border-radius: 5px; border: 1px solid var(--gen-orange); background-color: #d8d8d8; color: var(--gen-orange); cursor: pointer;" onclick="try{currentPopupWindow.close()}catch(e){}">Close Popup Window</button>
-        </div>
-    </div>
-
-    <script>
-HTMLCollection.prototype.forEach = Array.from(this).forEach;
-let AccordianSections = document.getElementsByClassName("accordion");
-const _ = (el) => document.getElementById(el);
-AccordianSections.forEach((el) => {
-    if (el.classList.contains("active")) {
-        el.nextElementSibling.style.height = (document.body.scrollHeight - 165) + "px";
-    }
-    el.open = (yesOrNo) => {
-        if (yesOrNo) {
-            el.classList.add("active");
-            el.nextElementSibling.style.height = (document.body.scrollHeight - 165) + "px";
+        if (tempKnownInteractions.includes(child.id)) {
+            tempKnownInteractions.splice(tempKnownInteractions.indexOf(child.id), 1);
         } else {
-            el.classList.remove("active");
-            el.nextElementSibling.style.height = null;
+            alert('New interaction: ' + child.id);
+            selectedInteraction = child.id;
+            knownInteractions.push(child.id);
         }
-    };
-    el.setActive = () => {
-        // first check if they can open this section yet
-        if (canIopenThisAccordionSection(el.id)) {
-            AccordianSections.forEach((e) => e.open(false));
-            el.open(true);
-        }
-    }
-    el.addEventListener("click", el.setActive );
-});
-function canIopenThisAccordionSection(elId) {
-    if (elId == 'IdentifyAccordionBtn') return true; // always allow Identify tab to open
-    if (elId == 'AssistAccordionBtn') {
-        if (SelectedPersonId == '') return false; // can't open Assist tab if no person is selected
-        return true;
-    }
-    if (elId == 'ReviewAccordionBtn') {
-        if (SelectedPersonId == '' || !AI_TicketHasBeenGenerated) return false; // can't open Review tab if no person is selected and if no KB article is selected
-        return true;
-    }
-    return false;
-}
-// set transition AFTER opening the first section
-document.documentElement.style.setProperty('--accordion-transition', 'height 0.5s ease');
-// on doument resize, re-set height property
-const resizeToWindowHeight = () => {
-    document.querySelector('.accordion.active + .accordion-panel').style.height = (document.body.scrollHeight - 170) + "px";
-}
-document.addEventListener("click", (e) => resizeToWindowHeight);
-window.addEventListener('resize', resizeToWindowHeight);
-// register input onenter
-Array.from(document.querySelectorAll('*[onenter]')).forEach((el) => {
-    el.addEventListener("keyup", (e) => {
-        // console.log(e.keyCode);
-        if (e.keyCode === 13) {
-            _(el.getAttribute('onenter')).click();
+        
+        if (child.className.includes('selected') && child.id != selectedInteraction) {
+            alert('New Selected Interaction: ' + child.id);
+            selectedInteraction = child.id;
         }
     });
-});
-
-function detectSearchQueryType(inVal, outputSpan) {
-    inVal = inVal.trim().toLowerCase();
-    if (inVal == '') {
-        outputSpan.innerText = '...';
-        _('IdenifySearchButton').disabled = true;
-        _('IdenifySearchQuery').setAttribute('Q-type', 'X');
+    if (tempKnownInteractions.length > 0) {
+        alert('Removed interaction: ' + tempKnownInteractions.join(', '));
     }
-    // if inVal is an I-number
-    else if (inVal.length == 9 && !isNaN(inVal)) {
-        outputSpan.innerText = 'I-Number';
-        _('IdenifySearchButton').disabled = false;
-        _('IdenifySearchQuery').setAttribute('Q-type', 'I#');
-    }
-    // if inVal starts with + and has only numbers, parenthesis, hyphens, and spaces
-    else if (inVal.startsWith('+') && inVal.match(/^[+0-9()-\\s]*$/)) {
-        outputSpan.innerText = 'Phone Number';
-        _('IdenifySearchButton').disabled = false;
-        _('IdenifySearchQuery').setAttribute('Q-type', 'PHONE');
-    }
-    // if inval is a name
-    else {
-        outputSpan.innerText = 'Name';
-        _('IdenifySearchButton').disabled = false;
-        _('IdenifySearchQuery').setAttribute('Q-type', 'NAME');
-    }
-}
-function showLoader(yesOrNo) {
-    _('loadingOverlay').style.display = yesOrNo ? null : 'none';
-}
-
-let PersonSearchResults = [];
-let SelectedPersonId = '';
-let AI_TicketHasBeenGenerated = false;
-async function conductIdenitySearch(el) {
-    let q = el.value;
-    let t = el.getAttribute('Q-type');
-    if (q.trim() == '' || t == 'X') return;
-
-    // reset the selection process
-    SelectedPersonId = '';
-    PersonSearchResults = [];
-    AI_TicketHasBeenGenerated = false;
-
-    showLoader(true);
-
-    await new Promise(r => setTimeout(r, (Math.random() * 1000) + 1000));
-    
-    showLoader(false);
-
-    PersonSearchResults = [
-        ['020bfd25-06c8-ee11-9f01-c89665346b33', 'Michael Becker', 'bec24007@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['bae72298-d6bb-ec11-997e-c89665346b33', 'Aleah Clyde', 'cly22001@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 2/10/24 4:18 AM'],
-        ['f65f2ca2-efe9-ea11-9112-005056ac5ec6', 'Daniel Mann', 'man21018@byui.edu', 'BYUI', '', 'OnCampusStudent', 'Yes', 'User', '', 'Sat 8/29/20 4:03 AM']
-    ];
-
-    // display Results
-    const peopleReultsList = _('peopleReultsList');
-    peopleReultsList.innerHTML = '';
-    PersonSearchResults.forEach((result) => {
-        let personCard = document.createElement('div');
-        personCard.className = 'personCard';
-        personCard.setAttribute('id', result[0]);
-        personCard.innerHTML = \`
-            <h3 onclick="openPersonDetails('\`+result[0]+\`')">\`+result[1]+\`</h3>
-            <p>\`+result[2]+\`</p>
-            <p>\`+result[3]+\`</p>
-            <button onclick="selectPersonAndStartTicket('\`+result[0]+\`')"><div style="width: 30px; height: 100%; display: flex; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="var(--gen-orange)"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.--><path d="M64 64C28.7 64 0 92.7 0 128l0 64c0 8.8 7.4 15.7 15.7 18.6C34.5 217.1 48 235 48 256s-13.5 38.9-32.3 45.4C7.4 304.3 0 311.2 0 320l0 64c0 35.3 28.7 64 64 64l448 0c35.3 0 64-28.7 64-64l0-64c0-8.8-7.4-15.7-15.7-18.6C541.5 294.9 528 277 528 256s13.5-38.9 32.3-45.4c8.3-2.9 15.7-9.8 15.7-18.6l0-64c0-35.3-28.7-64-64-64L64 64zm64 112l0 160c0 8.8 7.2 16 16 16l288 0c8.8 0 16-7.2 16-16l0-160c0-8.8-7.2-16-16-16l-288 0c-8.8 0-16 7.2-16 16zM96 160c0-17.7 14.3-32 32-32l320 0c17.7 0 32 14.3 32 32l0 192c0 17.7-14.3 32-32 32l-320 0c-17.7 0-32-14.3-32-32l0-192z"/></svg></div></button>
-        \`;
-        peopleReultsList.appendChild(personCard);
-    });
-}
-let currentPopupWindow = null;
-async function openPersonDetails(U_identifier) {
-    const popupWidth = 800;
-    const popupHeight = 760;
-    const left = (screen.width - popupWidth) / 2;
-    const top = (screen.height - popupHeight) / 2;
-    currentPopupWindow = window.open('https://td.byui.edu/TDNext/Apps/People/PersonDet.aspx?U=' + U_identifier, 'PersonDetails', 'width='+popupWidth+',height='+popupHeight+',top='+top+',left='+left);
-}
-
-function selectPersonAndStartTicket(U_identifier) {
-    // highlight that person's card
-    SelectedPersonId = U_identifier;
-    _('peopleReultsList').children.forEach(personCard => personCard.classList.remove('selected'));
-    document.querySelector('#peopleReultsList div.personCard[id="'+SelectedPersonId+'"]').classList.add('selected');
-    
-    let personArray = PersonSearchResults.filter((per) => per[0] === SelectedPersonId)[0];
-    _('RequesterName_toSubmit').value = personArray[1];
-    document.querySelector('#IdentifyAccordionBtn span').innerHTML = ': ' + personArray[1];
-    _('AssistAccordionBtn').setActive();
-}
-
-
-async function generateTicketWithAI() {
-    showLoader(true);
-    await new Promise(r => setTimeout(r, (Math.random() * 1000) + 1000));
-    AI_TicketHasBeenGenerated = true;
-    showLoader(false);
-
-    _('ReviewAccordionBtn').setActive();
-}
-</script>
-</body>
-
-</html>`;
-        panels.push(thisNewIframe);
-
-        // update interaction notes
-        updateInteractionNotes(JSON.stringify(newJSON));
-    }
-
-    // parse the JSON
-    let parsedJSON = JSON.parse(textareaVal);
-    console.log(parsedJSON);
-
-    // show the right panel
-    panels.array.forEach(el => el.style.display = 'none');
-    document.getElementById('TicketFrame_' + parsedJSON.uid).style.display = 'block';
+    knownInteractions = newKnownInteractions;
 }
 
 })();

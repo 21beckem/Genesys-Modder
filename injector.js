@@ -1,3 +1,7 @@
+HTMLCollection.prototype.forEach = Array.from(this).forEach;
+let TdTicketFrames = [];
+let knownInteractions = [];
+let selectedInteraction = '';
 (async function() {
 
 // wait for page to load
@@ -22,77 +26,102 @@ window.onbeforeunload = function(event) {
     return "Are you sure you want to refresh the page?";
 };
 
+// add sidebar and ticket button
 const sidebar = document.querySelector('UL.navigation-action-bar');
 let newLiBtn = document.createElement('LI');
 newLiBtn.classList.add('action-item');
 newLiBtn.style.overflow = 'hidden';
 newLiBtn.innerHTML = `$$sidebarBtn.html$$`;
 sidebar.insertBefore(newLiBtn, sidebar.querySelector('LI.spacer'));
-
-TicketBody.style.overflow = 'hidden';
 TicketBtn.innerHTML = `$$button.html$$`;
-TicketBody.innerHTML = `
-    <div id="NewTicketPanelBodySwitcher" style="width: 100%; height: 100%; border: none"></div>
-    <textarea style="display: none; opacity: 0; pointer-events: none" id="interaction-notes" dir="auto" placeholder="Type your notes here (no personal data)..." aria-label="Notes"></textarea>
-`;
 
-const NewTicketPanelBodySwitcher = document.getElementById('NewTicketPanelBodySwitcher');
-
+// add ticket panel parent DIV
+TicketBody.style.overflow = 'hidden';
 const InteractionNoteTextarea = document.getElementById('interaction-notes');
-let previousInteractionNotesValue = null;
-let letChangesBeTracked = true;
-let checkChanges = setInterval(() => {
-    if (previousInteractionNotesValue !== InteractionNoteTextarea.value) {
-        previousInteractionNotesValue = InteractionNoteTextarea.value;
-        
-        chatUpdate(previousInteractionNotesValue);
+const NewTicketPanelBodySwitcher = document.createElement('DIV');
+NewTicketPanelBodySwitcher.id = 'NewTicketPanelBodySwitcher';
+NewTicketPanelBodySwitcher.style.cssText = 'width: 100%; height: 100%; border: none';
+TicketBody.children.forEach((child) => {
+    if (child != InteractionNoteTextarea) {
+        child.remove();
     }
-}, 250);
-function updateInteractionNotes(newVal) {
-    console.log('setting interaction notes to: ' + newVal);
-    letChangesBeTracked = false;
-    previousInteractionNotesValue = newVal;
-    InteractionNoteTextarea.value = newVal;
-    letChangesBeTracked = true;
+})
+TicketBody.insertBefore(NewTicketPanelBodySwitcher, InteractionNoteTextarea);
+
+/////////////////////////////////////////////////////////
+//        Start Detecting Interaction Changes          //
+/////////////////////////////////////////////////////////
+
+// wait for interactions to load
+while ( !document.querySelectorAll('.interactions.chat-container .interactions') ) {
+    await new Promise(r => requestAnimationFrame(r));
 }
-panels = [];
-function isJsonString(str) {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
+// wait a little longer just to be sure.
+await new Promise(r => setTimeout(r, 2000));
+
+const interactionsList = document.querySelector('.interactions.chat-container .interactions');
+interactionsList.countInteractions = () => {
+    count = 0;
+    interactionsList.children.forEach((child) => {
+        count += (interactionsList.children[0].className.includes('no-interactions')) ? 0 : 1;
+    });
+    return count;
+}
+
+if (interactionsList.countInteractions() > 0) {
+    // create ticket panels for those now
+    compareInteractionListToTickets();
+}
+
+// make an observer to detect new interactions
+let previousAmountOfInteractions = interactionsList.countInteractions();
+const InteractionsObserver = new MutationObserver((mutationsList, observer) => {
+    let newInteractions = interactionsList.countInteractions();
+    if (newInteractions != previousAmountOfInteractions) {
+        // A child node has been added or removed.
+        previousAmountOfInteractions = newInteractions;
+        setTimeout(compareInteractionListToTickets, 200);
+    } else {
+        // if not, still compare selected interaction
+        compareSelectedInteraction();
     }
-    return true;
-}
-function chatUpdate(textareaVal) {
-    if (!isJsonString(textareaVal)) { // this is a new conversation that hasn't been used yet
-        // create new JSON with a unique ID for this conversation
-        newUid = Math.random().toString(36).substring(2, length + 2);
-        let newJSON = {
-            uid: newUid,
-            IdentifyTab: {
-                selected_id: '',
-                searchQuery: '',
-                results: []
-            }
+
+});
+InteractionsObserver.observe(interactionsList, { attributes: false, childList: true, subtree: false, characterData: false });
+
+function compareSelectedInteraction() {
+    interactionsList.children.forEach((child) => {
+        if (child.className.includes('selected') && child.id != selectedInteraction) {
+            alert('New Selected Interaction: ' + child.id);
+            selectedInteraction = child.id;
         }
-        // create new window
-        NewTicketPanelBodySwitcher.innerHTML += '<iframe id="TicketFrame_'+newUid+'" style="width: 100%; height: 100%; border: none"></iframe>';
-        let thisNewIframe = document.getElementById('TicketFrame_'+newUid);
-        thisNewIframe.srcdoc = `$$index.html$$`;
-        panels.push(thisNewIframe);
+    });
+}
 
-        // update interaction notes
-        updateInteractionNotes(JSON.stringify(newJSON));
+function compareInteractionListToTickets() {
+    let tempKnownInteractions = [...knownInteractions];
+    let newKnownInteractions = [];
+    interactionsList.children.forEach((child) => {
+        if (child.className.includes('no-interactions')) return;
+        newKnownInteractions.push(child.id);
+
+        if (tempKnownInteractions.includes(child.id)) {
+            tempKnownInteractions.splice(tempKnownInteractions.indexOf(child.id), 1);
+        } else {
+            alert('New interaction: ' + child.id);
+            selectedInteraction = child.id;
+            knownInteractions.push(child.id);
+        }
+        
+        if (child.className.includes('selected') && child.id != selectedInteraction) {
+            alert('New Selected Interaction: ' + child.id);
+            selectedInteraction = child.id;
+        }
+    });
+    if (tempKnownInteractions.length > 0) {
+        alert('Removed interaction: ' + tempKnownInteractions.join(', '));
     }
-
-    // parse the JSON
-    let parsedJSON = JSON.parse(textareaVal);
-    console.log(parsedJSON);
-
-    // show the right panel
-    panels.array.forEach(el => el.style.display = 'none');
-    document.getElementById('TicketFrame_' + parsedJSON.uid).style.display = 'block';
+    knownInteractions = newKnownInteractions;
 }
 
 })();

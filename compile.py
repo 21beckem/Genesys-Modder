@@ -20,7 +20,7 @@ with open('button.html', 'r') as f:
 with open('sidebarBtn.html', 'r') as f:
     sideBarBtn = f.read().replace('\\', '\\\\')
 
-# gather injector files
+# gather injector file
 with open('injector.js', 'r') as f:
     injector = f.read().replace('\\', '\\\\')
 
@@ -29,7 +29,7 @@ injector = injector.replace('$$button.html$$', button)
 injector = injector.replace('$$index.html$$', html)
 injector = injector.replace('$$sidebarBtn.html$$', sideBarBtn)
 
-
+# write to files
 with open('extension/injected/genesys.js', 'w') as f:
     f.write(injector)
 
