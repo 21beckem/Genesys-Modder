@@ -4,16 +4,28 @@
 
 <iframe src="https://us1.teamdynamix.com/tdapp/app/form/start?c=ODFmNmM0NTAtODZjYi00N2VmLWExYTAtOTc1MWY5NTg0NjYz&t=SGlyN2dBPT1PQjVJMkNyeFB0YUlSRnRhWlpGYXY3TERVWmhLRVZiTDAxSnBkbU9TLzY0dTQ5Tk9mRjNYZDU3YmlGZUZPOUQrVG1rWmxDUnlmdmZMeFUrNnVGeXJya3ZtSkRxSU9JaDF4VFI4UkpTdGV2SEdKRE5EWGRDQ1hvbWo1QzY0QVdISg&i=bec8d89b-1372-4df9-bc90-997acfaf67ab" height="700" width="100%" id="myFrame"></iframe>
 
-<button onclick="btnPush()">Send Command</button>
+<button onclick="sendMyINumber()">Send My I-Number</button>
+<br><br>
+<input type="text" id="KBSearchQuery"><button onclick="getKBArticles(document.getElementById('KBSearchQuery').value)">Get KB Articles</button>
 
 <script>
-async function btnPush() {
+async function sendMyINumber() {
 	const myFrame = document.querySelector('iframe');
     await sendMessageToIframe(myFrame, 'setInput', 'Enter Requestor I-Number', '099346149');
     await sendMessageToIframe(myFrame, 'click', 'Search');
     console.log('Searching for requestor with I-Number: 099346149.');
     await sendMessageToIframe(myFrame, 'waitForLoad', '');
     console.log('Finished waiting for the page to finish loading.');
+}
+async function getKBArticles(KBsearch) {
+	const myFrame = document.querySelector('iframe');
+    await sendMessageToIframe(myFrame, 'setInput', 'Type article subject then hit search', KBsearch);
+    await sendMessageToIframe(myFrame, 'click', 'Search KB');
+    console.log('Searching KBs for: ' + KBsearch);
+    await sendMessageToIframe(myFrame, 'waitForLoad', '');
+    let results = await sendMessageToIframe(myFrame, 'getSelectOptions', '');
+    alert('check console for results');
+    console.log(results);
 }
 
 function sendMessageToIframe(iframe, action, inputPlaceholder, valueToSet=null) {

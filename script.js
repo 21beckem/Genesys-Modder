@@ -154,3 +154,31 @@ async function generateTicketWithAI() {
 
     _('ReviewAccordionBtn').setActive();
 }
+let theseTestResults = ['Michael Becker', 'Aleah Clyde'];
+const KB_autocomplete = new autoComplete({
+    selector: "#KB_Input",
+    placeHolder: "Search ...",
+    data: {
+        src: theseTestResults,
+        cache: false,
+    },
+    resultsList: {
+        element: (list, data) => {
+            if (!data.results.length) {
+                // Create "No Results" message element
+                const message = document.createElement("div");
+                // Add class to the created element
+                message.setAttribute("class", "no_result");
+                message.style.cssText = 'padding: 10px; text-align: left'
+                // Add message text content
+                message.innerHTML = `<span>Found No Results for "${data.query}"</span>`;
+                // Append message element to the results list
+                list.prepend(message);
+            }
+        },
+        noResults: true,
+    },
+    resultItem: {
+        highlight: true,
+    }
+});

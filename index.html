@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genesys Ticketer Panel</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.9/dist/autoComplete.min.js"></script>
 </head>
 
 <body>
@@ -17,6 +18,8 @@
             <p style="color: gray;">Searching as <span>...</span></p>
             <br>
             <button class="submitBtn" disabled id="IdenifySearchButton" onclick="conductIdenitySearch(_('IdenifySearchQuery'))">Search</button>
+            <br>
+            <input id="KB_Input">
         </center>
         <div id="peopleReultsList"></div>
         

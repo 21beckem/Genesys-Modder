@@ -20,6 +20,9 @@
                 document.querySelector('input[placeholder="'+inputPlaceholder+'"]').value = String(valueToSet);
                 response.data = true;
                 break;
+            case 'getSelectOptions':
+                response.data = Array.from(document.querySelector('SELECT').querySelectorAll('OPTION')).map(x => [x.value,x.innerText]);
+                break;
             case 'waitForLoad':
                 while ( document.querySelector('.k-loading-mask, .loading-mask') ) {
                     await new Promise(r => requestAnimationFrame(r));

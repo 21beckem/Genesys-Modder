@@ -1,5 +1,4 @@
 HTMLCollection.prototype.forEach = Array.from(this).forEach;
-let TdTicketFrames = [];
 let knownInteractions = [];
 let selectedInteraction = '';
 (async function() {
@@ -38,15 +37,19 @@ TicketBtn.innerHTML = `$$button.html$$`;
 // add ticket panel parent DIV
 TicketBody.style.overflow = 'hidden';
 const InteractionNoteTextarea = document.getElementById('interaction-notes');
-const NewTicketPanelBodySwitcher = document.createElement('DIV');
-NewTicketPanelBodySwitcher.id = 'NewTicketPanelBodySwitcher';
-NewTicketPanelBodySwitcher.style.cssText = 'width: 100%; height: 100%; border: none';
+InteractionNoteTextarea.style.display = 'none';
+InteractionNoteTextarea.style.height = '0';
+InteractionNoteTextarea.style.opacity = '0';
+InteractionNoteTextarea.style.pointerEvents = 'none';
+const TicketPanelBodySwitcher = document.createElement('DIV');
+TicketPanelBodySwitcher.id = 'TicketPanelBodySwitcher';
+TicketPanelBodySwitcher.style.cssText = 'width: 100%; height: 100%; border: none';
 TicketBody.children.forEach((child) => {
     if (child != InteractionNoteTextarea) {
         child.remove();
     }
 })
-TicketBody.insertBefore(NewTicketPanelBodySwitcher, InteractionNoteTextarea);
+TicketBody.insertBefore(TicketPanelBodySwitcher, InteractionNoteTextarea);
 
 /////////////////////////////////////////////////////////
 //        Start Detecting Interaction Changes          //
@@ -57,20 +60,16 @@ while ( !document.querySelectorAll('.interactions.chat-container .interactions')
     await new Promise(r => requestAnimationFrame(r));
 }
 // wait a little longer just to be sure.
-await new Promise(r => setTimeout(r, 2000));
+await new Promise(r => setTimeout(r, 5000));
 
 const interactionsList = document.querySelector('.interactions.chat-container .interactions');
 interactionsList.countInteractions = () => {
     count = 0;
     interactionsList.children.forEach((child) => {
-        count += (interactionsList.children[0].className.includes('no-interactions')) ? 0 : 1;
+        // only count if it's not the no-interactions message AND not an incoming interaction
+        count += (child.className.includes('no-interactions') || child.className.includes('is-alerting') ) ? 0 : 1;
     });
     return count;
-}
-
-if (interactionsList.countInteractions() > 0) {
-    // create ticket panels for those now
-    compareInteractionListToTickets();
 }
 
 // make an observer to detect new interactions
@@ -92,8 +91,7 @@ InteractionsObserver.observe(interactionsList, { attributes: false, childList: t
 function compareSelectedInteraction() {
     interactionsList.children.forEach((child) => {
         if (child.className.includes('selected') && child.id != selectedInteraction) {
-            alert('New Selected Interaction: ' + child.id);
-            selectedInteraction = child.id;
+            TicketPanels.setSelected(child.id);
         }
     });
 }
@@ -102,26 +100,59 @@ function compareInteractionListToTickets() {
     let tempKnownInteractions = [...knownInteractions];
     let newKnownInteractions = [];
     interactionsList.children.forEach((child) => {
-        if (child.className.includes('no-interactions')) return;
+        // ignore no-interactions messange and incoming interactions
+        if (child.className.includes('no-interactions') || child.className.includes('is-alerting')) return;
         newKnownInteractions.push(child.id);
 
         if (tempKnownInteractions.includes(child.id)) {
             tempKnownInteractions.splice(tempKnownInteractions.indexOf(child.id), 1);
         } else {
-            alert('New interaction: ' + child.id);
-            selectedInteraction = child.id;
+            TicketPanels.newInteraction(child.id);
             knownInteractions.push(child.id);
         }
         
         if (child.className.includes('selected') && child.id != selectedInteraction) {
-            alert('New Selected Interaction: ' + child.id);
-            selectedInteraction = child.id;
+            TicketPanels.setSelected(child.id);
         }
     });
     if (tempKnownInteractions.length > 0) {
-        alert('Removed interaction: ' + tempKnownInteractions.join(', '));
+        tempKnownInteractions.forEach((interactionId) => {
+            TicketPanels.removeInteraction(interactionId);
+        })
     }
     knownInteractions = newKnownInteractions;
+}
+
+
+/////////////////////////////////////////////////////////
+//        Begin Functions for Managing Tickets         //
+/////////////////////////////////////////////////////////
+
+class TicketPanels {
+    static setSelected(interactionId) {
+        selectedInteraction = interactionId;
+        TicketPanelBodySwitcher.children.forEach((frame) => frame.style.display = 'none');
+        try {
+            document.getElementById('TdTicketFrame_' + interactionId).style.display = 'block';
+        } catch (error) {
+            // create the panel
+            TicketPanels.newInteraction(interactionId);
+        }
+    }
+    static newInteraction(interactionId) {
+        // stop if interaction already exists
+        if (document.getElementById('TdTicketFrame_' + interactionId)) return;
+
+        let newFrame = document.createElement('IFRAME');
+        newFrame.style.cssText = 'width: 100%; height: 100%; border: none';
+        newFrame.id = 'TdTicketFrame_' + interactionId;
+        newFrame.srcdoc = `$$index.html$$`;
+        TicketPanelBodySwitcher.appendChild(newFrame);
+    }
+    static removeInteraction(interactionId) {
+        // move it somewhere else??
+        // alert('Removed interaction: ' + interactionId);
+    }
 }
 
 })();

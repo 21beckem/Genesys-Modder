@@ -182,3 +182,38 @@ input[type="radio"]:checked+label.either_or {
     background-color: var(--gen-orange);
     color: white;
 }
+
+/* Autocomplete */
+.autoComplete_wrapper {
+    width: fit-content;
+}
+.autoComplete_wrapper input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgb(36, 36, 36);
+    box-shadow: 0px 0px 20px -10px #bfbfbf inset;
+    color: black;
+}
+.autoComplete_wrapper ul {
+    width: 100%;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 0 0 10px 10px;
+    border: 1px solid rgb(36, 36, 36);
+    border-top: 0;
+    box-shadow: 0px 0px 20px -10px #bfbfbf inset;
+    color: black;
+    background-color: white;
+    overflow-y: scroll;
+    max-height: 200px;
+}
+.autoComplete_wrapper ul li {
+    padding: 10px;
+    cursor: pointer;
+}
+.autoComplete_wrapper ul li:hover {
+    background-color: var(--gen-orange);
+    color: white;
+}
