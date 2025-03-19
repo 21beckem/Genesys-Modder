@@ -660,7 +660,7 @@ const KB_autocomplete = new autoComplete({
 </body>
 
 </html>`;
-        TicketPanelBodySwitcher.appendChild(newFrame);
+        TicketPanelBodySwitcher.prepend(newFrame);
     }
     static removeInteraction(interactionId) {
         // move it somewhere else??

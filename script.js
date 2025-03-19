@@ -1,12 +1,15 @@
 HTMLCollection.prototype.forEach = Array.from(this).forEach;
 let AccordianSections = document.getElementsByClassName("accordion");
 const _ = (el) => document.getElementById(el);
+const OpenedAccordionInput = _('OpenedAccordionInput');
 AccordianSections.forEach((el) => {
     if (el.classList.contains("active")) {
         el.nextElementSibling.style.height = (document.body.scrollHeight - 165) + "px";
     }
     el.open = (yesOrNo) => {
         if (yesOrNo) {
+            OpenedAccordionInput.value = el.id;
+            try { MyFormSaver.backup(); } catch (e) {}
             el.classList.add("active");
             el.nextElementSibling.style.height = (document.body.scrollHeight - 165) + "px";
         } else {
@@ -23,6 +26,7 @@ AccordianSections.forEach((el) => {
     }
     el.addEventListener("click", el.setActive );
 });
+OpenedAccordionInput.addEventListener("input", () => { _(OpenedAccordionInput.value).setActive(); });
 function canIopenThisAccordionSection(elId) {
     if (elId == 'IdentifyAccordionBtn') return true; // always allow Identify tab to open
     if (elId == 'AssistAccordionBtn') {
@@ -84,7 +88,6 @@ function showLoader(yesOrNo) {
 }
 
 let PersonSearchResults = [];
-let SelectedPersonId = '';
 let AI_TicketHasBeenGenerated = false;
 async function conductIdenitySearch(el) {
     let q = el.value;
@@ -135,7 +138,9 @@ async function openPersonDetails(U_identifier) {
 
 function selectPersonAndStartTicket(U_identifier) {
     // highlight that person's card
-    SelectedPersonId = U_identifier;
+    MyFormSaver.saveEternalVar('SelectedPersonId', U_identifier);
+    _('SelectedPersonId').value = SelectedPersonId;
+    MyFormSaver.backup();
     _('peopleReultsList').children.forEach(personCard => personCard.classList.remove('selected'));
     document.querySelector('#peopleReultsList div.personCard[id="'+SelectedPersonId+'"]').classList.add('selected');
     
@@ -154,31 +159,49 @@ async function generateTicketWithAI() {
 
     _('ReviewAccordionBtn').setActive();
 }
-let theseTestResults = ['Michael Becker', 'Aleah Clyde'];
-const KB_autocomplete = new autoComplete({
-    selector: "#KB_Input",
-    placeHolder: "Search ...",
-    data: {
-        src: theseTestResults,
-        cache: false,
-    },
-    resultsList: {
-        element: (list, data) => {
-            if (!data.results.length) {
-                // Create "No Results" message element
-                const message = document.createElement("div");
-                // Add class to the created element
-                message.setAttribute("class", "no_result");
-                message.style.cssText = 'padding: 10px; text-align: left'
-                // Add message text content
-                message.innerHTML = `<span>Found No Results for "${data.query}"</span>`;
-                // Append message element to the results list
-                list.prepend(message);
-            }
-        },
-        noResults: true,
-    },
-    resultItem: {
-        highlight: true,
+
+///////////////////////////////////////////////////////////////////
+//            Backup everything to local storage                 //
+///////////////////////////////////////////////////////////////////
+
+class FormSaver {
+    constructor(convoId) {
+        this.convoId = convoId;
+        document.querySelectorAll('input, textarea, select').forEach((el) => {
+            el.addEventListener('input', () => this.backup.bind(this)() );
+        })
+        this.restore();
     }
-});
+    backup() {
+        let myArr = [];
+        document.querySelectorAll('input, textarea, select').forEach((el) => {
+            myArr.push(el.value);
+        });
+        localStorage.setItem(this.convoId+'_FormBackup', JSON.stringify(myArr));
+    }
+    restore() {
+        if (!localStorage.getItem(this.convoId+'_FormBackup')) return;
+        let myArr = JSON.parse(localStorage.getItem(this.convoId+'_FormBackup'));
+        let i = 0;
+        document.querySelectorAll('input, textarea, select').forEach((el) => {
+            el.value = myArr[i];
+            el.dispatchEvent(new Event('input'));
+            i++;
+        });
+    }
+    saveEternalVar(varName, varValue) {
+        console.log('FormSaver.saveEternalVar', varName, varValue);
+        window[varName] = varValue;
+        _(varName).value = varValue;
+        this.backup();
+    }
+    static loadVar(varName) {
+        window[varName] = _(varName).value;
+    }
+}
+const urlParams = new URLSearchParams(window.location.search);
+const gcConversationId = urlParams.get('gcConversationId') || 'test';
+// if (gcConversationId == null) {
+//     console.error('No gcConversationId found in the URL. Open the Genesys Widget.');
+// }
+const MyFormSaver = new FormSaver(gcConversationId);

@@ -51,6 +51,8 @@ TicketBody.children.forEach((child) => {
 })
 TicketBody.insertBefore(TicketPanelBodySwitcher, InteractionNoteTextarea);
 
+// add UI to the ticket field
+
 /////////////////////////////////////////////////////////
 //        Start Detecting Interaction Changes          //
 /////////////////////////////////////////////////////////
@@ -73,17 +75,8 @@ interactionsList.countInteractions = () => {
 }
 
 // make an observer to detect new interactions
-let previousAmountOfInteractions = interactionsList.countInteractions();
 const InteractionsObserver = new MutationObserver((mutationsList, observer) => {
-    let newInteractions = interactionsList.countInteractions();
-    if (newInteractions != previousAmountOfInteractions) {
-        // A child node has been added or removed.
-        previousAmountOfInteractions = newInteractions;
-        setTimeout(compareInteractionListToTickets, 200);
-    } else {
-        // if not, still compare selected interaction
-        compareSelectedInteraction();
-    }
+    compareSelectedInteraction();
 
 });
 InteractionsObserver.observe(interactionsList, { attributes: false, childList: true, subtree: false, characterData: false });
@@ -94,33 +87,6 @@ function compareSelectedInteraction() {
             TicketPanels.setSelected(child.id);
         }
     });
-}
-
-function compareInteractionListToTickets() {
-    let tempKnownInteractions = [...knownInteractions];
-    let newKnownInteractions = [];
-    interactionsList.children.forEach((child) => {
-        // ignore no-interactions messange and incoming interactions
-        if (child.className.includes('no-interactions') || child.className.includes('is-alerting')) return;
-        newKnownInteractions.push(child.id);
-
-        if (tempKnownInteractions.includes(child.id)) {
-            tempKnownInteractions.splice(tempKnownInteractions.indexOf(child.id), 1);
-        } else {
-            TicketPanels.newInteraction(child.id);
-            knownInteractions.push(child.id);
-        }
-        
-        if (child.className.includes('selected') && child.id != selectedInteraction) {
-            TicketPanels.setSelected(child.id);
-        }
-    });
-    if (tempKnownInteractions.length > 0) {
-        tempKnownInteractions.forEach((interactionId) => {
-            TicketPanels.removeInteraction(interactionId);
-        })
-    }
-    knownInteractions = newKnownInteractions;
 }
 
 
@@ -148,10 +114,6 @@ class TicketPanels {
         newFrame.id = 'TdTicketFrame_' + interactionId;
         newFrame.srcdoc = `$$index.html$$`;
         TicketPanelBodySwitcher.appendChild(newFrame);
-    }
-    static removeInteraction(interactionId) {
-        // move it somewhere else??
-        // alert('Removed interaction: ' + interactionId);
     }
 }
 
